@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"fmt"
+
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 	assert "github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -70,13 +71,14 @@ func subTest4Run(t *testing.T, qos byte) {
 
 	c.Disconnect(0)
 
-	//c = MQTT.NewClient(opts)
+	c = MQTT.NewClient(opts)
 	token = c.Connect()
 	token.Wait()
 	require.NoError(t, token.Error())
 
-	//token = c.Unsubscribe(test_topic)
-	//require.NoError(t, token.Error())
+	token = c.Unsubscribe(test_topic)
+	token.Wait()
+	require.NoError(t, token.Error())
 
-	//c.Disconnect(250)
+	c.Disconnect(250)
 }

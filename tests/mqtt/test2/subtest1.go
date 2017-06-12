@@ -1,15 +1,17 @@
 package test2
 
 import (
-	assert "github.com/stretchr/testify/assert"
 	"testing"
+
+	assert "github.com/stretchr/testify/assert"
+
+	"sync"
+	"sync/atomic"
+	"time"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"github.com/stretchr/testify/require"
 	"github.com/troian/surgemq/tests/mqtt/config"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 type subTest1Config struct {
@@ -93,7 +95,7 @@ func SubTest1(t *testing.T) {
 		topic:      test_topic,
 		qos:        0,
 		iterations: iterations,
-		timeout:    30,
+		timeout:    10,
 	})
 	go subTest1SendReceive(t, c, subTest1Config{
 		wg:         &wg1,
@@ -114,7 +116,7 @@ func SubTest1(t *testing.T) {
 		timeout:    10,
 	})
 
-	subDone.Wait()
+	assert.Equal(t, false, waitTimeout(&subDone, 30*time.Second))
 
 	require.Equal(t, int32(0), failures, "Messages failed %d", failures)
 

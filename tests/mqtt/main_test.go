@@ -1,6 +1,9 @@
 package tests
 
 import (
+	"os"
+	"testing"
+
 	"github.com/troian/surgemq/auth"
 	authTypes "github.com/troian/surgemq/auth/types"
 	persistType "github.com/troian/surgemq/persistence/types"
@@ -13,8 +16,7 @@ import (
 	"github.com/troian/surgemq/tests/mqtt/test4"
 	_ "github.com/troian/surgemq/topics/mem"
 	"github.com/troian/surgemq/types"
-	"os"
-	"testing"
+	"time"
 )
 
 type internalAuth struct {
@@ -42,18 +44,18 @@ func init() {
 			name:  "connack return codes",
 			entry: test1.SubTest3,
 		},
-		//{
-		//	name:  "persistence",
-		//	entry: test1.SubTest4,
-		//},
-		//{
-		//	name:  "disconnect with quiesce timeout should allow exchanges to complete",
-		//	entry: test1.SubTest5,
-		//},
-		//{
-		//	name:  "connection lost and will messages",
-		//	entry: test1.SubTest6,
-		//},
+		{
+			name:  "persistence",
+			entry: test1.SubTest4,
+		},
+		{
+			name:  "disconnect with quiesce timeout should allow exchanges to complete",
+			entry: test1.SubTest5,
+		},
+		{
+			name:  "connection lost and will messages",
+			entry: test1.SubTest6,
+		},
 		{
 			name:  "multiple threads using same client object",
 			entry: test2.SubTest1,
@@ -65,10 +67,6 @@ func init() {
 		{
 			name:  "asynchronous connect",
 			entry: test4.SubTest1,
-		},
-		{
-			name:  "connect timeout",
-			entry: test4.SubTest2,
 		},
 		{
 			name:  "retained messages",
@@ -163,6 +161,7 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
+	<-time.After(1 * time.Second)
 	prx, _ := proxy.NewProxy("localhost:1884", "localhost:1883")
 
 	res := m.Run()
