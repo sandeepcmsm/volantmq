@@ -1,4 +1,4 @@
-package test10
+package test12
 
 import (
 	"testing"
@@ -7,12 +7,38 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/troian/surgemq/tests/mqtt/config"
+	testTypes "github.com/troian/surgemq/tests/types"
 	"strconv"
 	"sync"
 	"time"
 )
 
-func SubTest2(t *testing.T) {
+var topics []string
+var wildTopics []string
+
+type impl struct {
+}
+
+var _ testTypes.Provider = (*impl)(nil)
+
+const (
+	testName = "offline queuing"
+)
+
+func init() {
+	topics = []string{"TopicA", "TopicA/B", "Topic/C", "TopicA/C", "/TopicA"}
+	wildTopics = []string{"TopicA/+", "+/C", "#", "/#", "/+", "+/+", "TopicA/#"}
+}
+
+func New() testTypes.Provider {
+	return &impl{}
+}
+
+func (im *impl) Name() string {
+	return testName
+}
+
+func (im *impl) Run(t *testing.T) {
 	timeout := 5 * time.Second
 
 	cfg := config.Get()
@@ -76,7 +102,7 @@ func SubTest2(t *testing.T) {
 	token = c.Connect()
 	token.Wait()
 	require.NoError(t, token.Error())
-	assert.Equal(t, false, waitTimeout(&wg, timeout), "Timeout waiting retained messages")
+	assert.Equal(t, false, testTypes.WaitTimeout(&wg, timeout), "Timeout waiting retained messages")
 
 	c.Disconnect(0)
 

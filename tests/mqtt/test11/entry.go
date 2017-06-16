@@ -1,4 +1,4 @@
-package test10
+package test11
 
 import (
 	"testing"
@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/troian/surgemq/tests/mqtt/config"
+	testTypes "github.com/troian/surgemq/tests/types"
 	"strconv"
 	"sync"
 	"time"
@@ -15,26 +16,29 @@ import (
 var topics []string
 var wildTopics []string
 
+type impl struct {
+}
+
+var _ testTypes.Provider = (*impl)(nil)
+
+const (
+	testName = "retained messages"
+)
+
 func init() {
 	topics = []string{"TopicA", "TopicA/B", "Topic/C", "TopicA/C", "/TopicA"}
 	wildTopics = []string{"TopicA/+", "+/C", "#", "/#", "/+", "+/+", "TopicA/#"}
 }
 
-func waitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
-	c := make(chan struct{})
-	go func() {
-		defer close(c)
-		wg.Wait()
-	}()
-	select {
-	case <-c:
-		return false // completed normally
-	case <-time.After(timeout):
-		return true // timed out
-	}
+func New() testTypes.Provider {
+	return &impl{}
 }
 
-func SubTest1(t *testing.T) {
+func (im *impl) Name() string {
+	return testName
+}
+
+func (im *impl) Run(t *testing.T) {
 	timeout := 5 * time.Second
 
 	cfg := config.Get()
@@ -73,7 +77,7 @@ func SubTest1(t *testing.T) {
 	token.Wait()
 	require.NoError(t, token.Error())
 
-	assert.Equal(t, false, waitTimeout(&wg, timeout), "Timeout waiting retained messages")
+	assert.Equal(t, false, testTypes.WaitTimeout(&wg, timeout), "Timeout waiting retained messages")
 
 	c.Disconnect(250)
 

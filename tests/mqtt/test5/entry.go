@@ -1,4 +1,4 @@
-package test1
+package test5
 
 import (
 	"testing"
@@ -8,10 +8,28 @@ import (
 	assert "github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/troian/surgemq/tests/mqtt/config"
+	testTypes "github.com/troian/surgemq/tests/types"
 	"time"
 )
 
-func SubTest5(t *testing.T) {
+type impl struct {
+}
+
+var _ testTypes.Provider = (*impl)(nil)
+
+const (
+	testName = "disconnect with quiesce timeout should allow exchanges to complete"
+)
+
+func New() testTypes.Provider {
+	return &impl{}
+}
+
+func (im *impl) Name() string {
+	return testName
+}
+
+func (im *impl) Run(t *testing.T) {
 	test_topic := "Persistence test 2"
 	subsQos := byte(2)
 

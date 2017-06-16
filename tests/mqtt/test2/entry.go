@@ -1,4 +1,4 @@
-package test1
+package test2
 
 import (
 	"testing"
@@ -7,11 +7,29 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/troian/surgemq/tests/mqtt/config"
+	testTypes "github.com/troian/surgemq/tests/types"
 	"sync"
 	"time"
 )
 
-func SubTest2(t *testing.T) {
+type impl struct {
+}
+
+var _ testTypes.Provider = (*impl)(nil)
+
+const (
+	testName = "multi threaded client using callbacks"
+)
+
+func New() testTypes.Provider {
+	return &impl{}
+}
+
+func (im *impl) Name() string {
+	return testName
+}
+
+func (im *impl) Run(t *testing.T) {
 	test_topic := "GO client test2"
 	subsQos := byte(2)
 	payload := []byte("a much longer message that we can shorten to the extent that we need to")
@@ -59,9 +77,44 @@ func SubTest2(t *testing.T) {
 	token.Wait()
 	require.NoError(t, token.Error())
 
-	subTest2SendReceive(received, t, c, 0, test_topic, payload)
-	subTest2SendReceive(received, t, c, 1, test_topic, payload)
-	subTest2SendReceive(received, t, c, 2, test_topic, payload)
+	worker := func(qos byte) {
+		iterations := 50
+
+		var wgDelivered sync.WaitGroup
+
+		wgDelivered.Add(iterations)
+
+		for i := 0; i < iterations; i++ {
+			token := c.Publish(test_topic, qos, false, payload)
+			require.NoError(t, token.Error())
+
+			go func(tok MQTT.Token) {
+				tok.Wait()
+				if assert.NoError(t, token.Error()) {
+					wgDelivered.Done()
+				}
+			}(token)
+
+			// wait message has arrived
+			var timeout bool
+			select {
+			case <-received:
+				timeout = false // completed normally
+			case <-time.After(10 * time.Second):
+				timeout = true // timed out
+			}
+			require.Equal(t, false, timeout, "Timed out waiting for message")
+		}
+
+		if qos > 0 {
+			res := testTypes.WaitTimeout(&wgDelivered, 10*time.Second)
+			require.Equal(t, false, res, "Timed out waiting for deliveries")
+		}
+	}
+
+	worker(0)
+	worker(1)
+	worker(2)
 
 	token = c.Unsubscribe(test_topic)
 	require.NoError(t, token.Error())
@@ -71,39 +124,4 @@ func SubTest2(t *testing.T) {
 	c.Disconnect(250)
 
 	require.Equal(t, 0, failures, "Failed messages")
-}
-
-func subTest2SendReceive(r chan MQTT.Message, t *testing.T, c MQTT.Client, qos byte, topic string, payload []byte) {
-	iterations := 50
-
-	var wgDelivered sync.WaitGroup
-
-	wgDelivered.Add(iterations)
-
-	for i := 0; i < iterations; i++ {
-		token := c.Publish(topic, qos, false, payload)
-		require.NoError(t, token.Error())
-
-		go func(tok MQTT.Token) {
-			tok.Wait()
-			if assert.NoError(t, token.Error()) {
-				wgDelivered.Done()
-			}
-		}(token)
-
-		// wait message has arrived
-		var timeout bool
-		select {
-		case <-r:
-			timeout = false // completed normally
-		case <-time.After(10 * time.Second):
-			timeout = true // timed out
-		}
-		require.Equal(t, false, timeout, "Timed out waiting for message")
-	}
-
-	if qos > 0 {
-		res := waitTimeout(&wgDelivered, 10*time.Second)
-		require.Equal(t, false, res, "Timed out waiting for deliveries")
-	}
 }

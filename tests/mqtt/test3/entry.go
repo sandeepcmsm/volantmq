@@ -1,4 +1,4 @@
-package test1
+package test3
 
 import (
 	"testing"
@@ -8,9 +8,27 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/troian/surgemq/tests/mqtt/config"
+	testTypes "github.com/troian/surgemq/tests/types"
 )
 
-func SubTest3(t *testing.T) {
+type impl struct {
+}
+
+var _ testTypes.Provider = (*impl)(nil)
+
+const (
+	testName = "connack codes"
+)
+
+func New() testTypes.Provider {
+	return &impl{}
+}
+
+func (im *impl) Name() string {
+	return testName
+}
+
+func (im *impl) Run(t *testing.T) {
 	cfg := config.Get()
 
 	opts := MQTT.NewClientOptions().

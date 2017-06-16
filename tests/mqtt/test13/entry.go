@@ -1,4 +1,4 @@
-package test10
+package test13
 
 import (
 	"testing"
@@ -7,11 +7,37 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/troian/surgemq/tests/mqtt/config"
+	testTypes "github.com/troian/surgemq/tests/types"
 	"sync/atomic"
 	"time"
 )
 
-func SubTest3(t *testing.T) {
+var topics []string
+var wildTopics []string
+
+type impl struct {
+}
+
+var _ testTypes.Provider = (*impl)(nil)
+
+const (
+	testName = "overlapping"
+)
+
+func init() {
+	topics = []string{"TopicA", "TopicA/B", "Topic/C", "TopicA/C", "/TopicA"}
+	wildTopics = []string{"TopicA/+", "+/C", "#", "/#", "/+", "+/+", "TopicA/#"}
+}
+
+func New() testTypes.Provider {
+	return &impl{}
+}
+
+func (im *impl) Name() string {
+	return testName
+}
+
+func (im *impl) Run(t *testing.T) {
 	timeout := 5 * time.Second
 
 	cfg := config.Get()

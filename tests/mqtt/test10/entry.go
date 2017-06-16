@@ -1,4 +1,4 @@
-package test4
+package test10
 
 import (
 	assert "github.com/stretchr/testify/assert"
@@ -7,25 +7,29 @@ import (
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"github.com/stretchr/testify/require"
 	"github.com/troian/surgemq/tests/mqtt/config"
+	testTypes "github.com/troian/surgemq/tests/types"
 	"sync"
 	"time"
 )
 
-func waitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
-	c := make(chan struct{})
-	go func() {
-		defer close(c)
-		wg.Wait()
-	}()
-	select {
-	case <-c:
-		return false // completed normally
-	case <-time.After(timeout):
-		return true // timed out
-	}
+type impl struct {
 }
 
-func SubTest1(t *testing.T) {
+var _ testTypes.Provider = (*impl)(nil)
+
+const (
+	testName = "async connect"
+)
+
+func New() testTypes.Provider {
+	return &impl{}
+}
+
+func (im *impl) Name() string {
+	return testName
+}
+
+func (im *impl) Run(t *testing.T) {
 	payload := []byte("a much longer message that we can shorten to the extent that we need to")
 	test_topic := "async test topic"
 
@@ -75,8 +79,8 @@ func SubTest1(t *testing.T) {
 	token.Wait()
 	require.NoError(t, token.Error())
 
-	if assert.Equal(t, false, waitTimeout(&wg0, 5*time.Second), "Error waiting connect") {
-		assert.Equal(t, false, waitTimeout(&wg1, 5*time.Second), "Error waiting message")
+	if assert.Equal(t, false, testTypes.WaitTimeout(&wg0, 5*time.Second), "Error waiting connect") {
+		assert.Equal(t, false, testTypes.WaitTimeout(&wg1, 5*time.Second), "Error waiting message")
 
 		token = c.Unsubscribe(test_topic)
 		token.Wait()

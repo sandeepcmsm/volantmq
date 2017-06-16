@@ -1,4 +1,4 @@
-package test2
+package test8
 
 import (
 	assert "github.com/stretchr/testify/assert"
@@ -7,22 +7,30 @@ import (
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"github.com/stretchr/testify/require"
 	"github.com/troian/surgemq/tests/mqtt/config"
+	testTypes "github.com/troian/surgemq/tests/types"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
-type subTest2Config struct {
-	wg         *sync.WaitGroup
-	done       *sync.WaitGroup
-	payload    []byte
-	topic      string
-	qos        byte
-	iterations int
-	timeout    time.Duration
+type impl struct {
 }
 
-func SubTest2(t *testing.T) {
+var _ testTypes.Provider = (*impl)(nil)
+
+const (
+	testName = "multiple threads using callbacks"
+)
+
+func New() testTypes.Provider {
+	return &impl{}
+}
+
+func (im *impl) Name() string {
+	return testName
+}
+
+func (im *impl) Run(t *testing.T) {
 	var failures int32
 	iterations := 50
 	payload := []byte("a much longer message that we can shorten to the extent that we need to")
@@ -77,7 +85,25 @@ func SubTest2(t *testing.T) {
 	token.Wait()
 	require.NoError(t, token.Error())
 
-	subTest2SendReceive(t, c, subTest2Config{
+	type subTestConfig struct {
+		wg         *sync.WaitGroup
+		done       *sync.WaitGroup
+		payload    []byte
+		topic      string
+		qos        byte
+		iterations int
+		timeout    time.Duration
+	}
+
+	worker := func(cfg subTestConfig) {
+		for i := 0; i < cfg.iterations; i++ {
+			c.Publish(cfg.topic, cfg.qos, false, cfg.payload)
+		}
+
+		assert.Equal(t, false, testTypes.WaitTimeout(cfg.wg, cfg.timeout*time.Second))
+	}
+
+	worker(subTestConfig{
 		wg:         &wg0,
 		payload:    payload,
 		topic:      test_topic,
@@ -85,7 +111,7 @@ func SubTest2(t *testing.T) {
 		iterations: iterations,
 		timeout:    30,
 	})
-	subTest2SendReceive(t, c, subTest2Config{
+	worker(subTestConfig{
 		wg:         &wg1,
 		payload:    payload,
 		topic:      test_topic,
@@ -93,7 +119,7 @@ func SubTest2(t *testing.T) {
 		iterations: iterations,
 		timeout:    10,
 	})
-	subTest2SendReceive(t, c, subTest2Config{
+	worker(subTestConfig{
 		wg:         &wg2,
 		payload:    payload,
 		topic:      test_topic,
@@ -111,13 +137,4 @@ func SubTest2(t *testing.T) {
 	token.Wait()
 	require.NoError(t, token.Error())
 	c.Disconnect(250)
-}
-
-func subTest2SendReceive(t *testing.T, c MQTT.Client, cfg subTest2Config) {
-	for i := 0; i < cfg.iterations; i++ {
-		c.Publish(cfg.topic, cfg.qos, false, cfg.payload)
-	}
-
-	assert.Equal(t, false, waitTimeout(cfg.wg, cfg.timeout*time.Second))
-
 }

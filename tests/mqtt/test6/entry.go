@@ -1,4 +1,4 @@
-package test1
+package test6
 
 import (
 	"testing"
@@ -10,10 +10,28 @@ import (
 	//"time"
 	"bytes"
 	"github.com/troian/surgemq/tests/mqtt/config"
+	testTypes "github.com/troian/surgemq/tests/types"
 	"time"
 )
 
-func SubTest6(t *testing.T) {
+type impl struct {
+}
+
+var _ testTypes.Provider = (*impl)(nil)
+
+const (
+	testName = "connection lost and will messages"
+)
+
+func New() testTypes.Provider {
+	return &impl{}
+}
+
+func (im *impl) Name() string {
+	return testName
+}
+
+func (im *impl) Run(t *testing.T) {
 	will_topic := "GO Test 6: will topic"
 	will_message := "will message from Client-1"
 

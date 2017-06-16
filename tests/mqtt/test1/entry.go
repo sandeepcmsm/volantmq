@@ -7,25 +7,27 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/troian/surgemq/tests/mqtt/config"
-	"sync"
-	"time"
+	testTypes "github.com/troian/surgemq/tests/types"
 )
 
-func waitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
-	c := make(chan struct{})
-	go func() {
-		defer close(c)
-		wg.Wait()
-	}()
-	select {
-	case <-c:
-		return false // completed normally
-	case <-time.After(timeout):
-		return true // timed out
-	}
+type impl struct {
 }
 
-func SubTest1(t *testing.T) {
+var _ testTypes.Provider = (*impl)(nil)
+
+const (
+	testName = "single threaded client using receive"
+)
+
+func New() testTypes.Provider {
+	return &impl{}
+}
+
+func (im *impl) Name() string {
+	return testName
+}
+
+func (im *impl) Run(t *testing.T) {
 	test_topic := "GO client test1"
 	subsQos := byte(2)
 
@@ -57,9 +59,26 @@ func SubTest1(t *testing.T) {
 	token.Wait()
 	require.NoError(t, token.Error())
 
-	subTest1SendReceive(receiver, t, c, 0, test_topic)
-	subTest1SendReceive(receiver, t, c, 1, test_topic)
-	subTest1SendReceive(receiver, t, c, 2, test_topic)
+	worker := func(qos byte) {
+		iterations := 50
+		payload := "a much longer message that we can shorten to the extent that we need to payload up to 11"
+
+		for i := 0; i < iterations; i++ {
+			token := c.Publish(test_topic, qos, false, payload)
+			token.Wait()
+			require.NoError(t, token.Error())
+
+			msg := <-receiver
+
+			require.Equal(t, test_topic, msg.Topic())
+			require.Equal(t, qos, msg.Qos())
+			require.Equal(t, payload, string(msg.Payload()))
+		}
+	}
+
+	worker(0)
+	worker(1)
+	worker(2)
 
 	token = c.Unsubscribe(test_topic)
 	require.NoError(t, token.Error())
@@ -74,21 +93,4 @@ func SubTest1(t *testing.T) {
 	token.Wait()
 	require.NoError(t, token.Error())
 	c.Disconnect(250)
-}
-
-func subTest1SendReceive(r chan MQTT.Message, t *testing.T, c MQTT.Client, qos byte, topic string) {
-	iterations := 50
-	payload := "a much longer message that we can shorten to the extent that we need to payload up to 11"
-
-	for i := 0; i < iterations; i++ {
-		token := c.Publish(topic, qos, false, payload)
-		token.Wait()
-		require.NoError(t, token.Error())
-
-		msg := <-r
-
-		require.Equal(t, topic, msg.Topic())
-		require.Equal(t, qos, msg.Qos())
-		require.Equal(t, payload, string(msg.Payload()))
-	}
 }
