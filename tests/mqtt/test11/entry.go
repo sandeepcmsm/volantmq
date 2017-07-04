@@ -78,8 +78,7 @@ func (im *impl) Run(t *testing.T) {
 	require.NoError(t, token.Error())
 
 	assert.Equal(t, false, testTypes.WaitTimeout(&wg, timeout), "Timeout waiting retained messages")
-
-	c.Disconnect(250)
+	c.Disconnect(0)
 
 	// Just to make sure we can connect again
 	c = MQTT.NewClient(opts)
@@ -87,6 +86,7 @@ func (im *impl) Run(t *testing.T) {
 	token.Wait()
 	require.NoError(t, token.Error())
 
+	// delete retained messages by sending message with empty payload
 	for i := byte(0); i < byte(retainCount); i++ {
 		payload := []byte{}
 		token = c.Publish(topics[i+1], i, true, payload)
@@ -98,11 +98,16 @@ func (im *impl) Run(t *testing.T) {
 	token = c.Subscribe(wildTopics[5], 2, func(_ MQTT.Client, msg MQTT.Message) {
 		noRetains++
 	})
+
 	token.Wait()
 	require.NoError(t, token.Error())
 
 	<-time.After(timeout)
-	c.Disconnect(250)
+	//token = c.Unsubscribe(wildTopics[5])
+	//token.Wait()
+	//require.NoError(t, token.Error())
+
+	c.Disconnect(0)
 
 	require.Equal(t, 0, noRetains, "No retained messages should be received after delete")
 }

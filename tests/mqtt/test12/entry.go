@@ -75,12 +75,20 @@ func (im *impl) Run(t *testing.T) {
 	token = c.Subscribe(wildTopics[5], 2, nil)
 	token.Wait()
 	require.NoError(t, token.Error())
-
 	c.Disconnect(0)
 
-	opts.SetClientID("offline_test2")
-	opts.SetCleanSession(true)
-	c2 := MQTT.NewClient(opts)
+	opts2 := MQTT.NewClientOptions().
+		AddBroker(cfg.Host).
+		SetClientID("offline_test2").
+		SetCleanSession(true).
+		SetUsername(cfg.TestUser).
+		SetPassword(cfg.TestPassword).
+		SetAutoReconnect(false).
+		SetKeepAlive(20).
+		SetConnectionLostHandler(func(client MQTT.Client, reason error) {
+		assert.Fail(t, reason.Error())
+	})
+	c2 := MQTT.NewClient(opts2)
 	token = c2.Connect()
 	token.Wait()
 	require.NoError(t, token.Error())
@@ -95,20 +103,35 @@ func (im *impl) Run(t *testing.T) {
 	opts.SetClientID("offline_test1")
 	opts.SetCleanSession(false)
 	opts.SetDefaultPublishHandler(func(client MQTT.Client, message MQTT.Message) {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Fatal("Amount of messages exceed init count")
+			}
+		}()
 		wg.Done()
 	})
 
 	c = MQTT.NewClient(opts)
 	token = c.Connect()
 	token.Wait()
+
 	require.NoError(t, token.Error())
 	assert.Equal(t, false, testTypes.WaitTimeout(&wg, timeout), "Timeout waiting retained messages")
-
 	c.Disconnect(0)
 
-	// Clean session
-	opts.SetCleanSession(true)
-	c = MQTT.NewClient(opts)
+	opts3 := MQTT.NewClientOptions().
+		AddBroker(cfg.Host).
+		SetClientID("offline_test1").
+		SetCleanSession(true).
+		SetUsername(cfg.TestUser).
+		SetPassword(cfg.TestPassword).
+		SetAutoReconnect(false).
+		SetKeepAlive(20).
+		SetConnectionLostHandler(func(client MQTT.Client, reason error) {
+			assert.Fail(t, reason.Error())
+		})
+
+	c = MQTT.NewClient(opts3)
 	token = c.Connect()
 	token.Wait()
 	require.NoError(t, token.Error())

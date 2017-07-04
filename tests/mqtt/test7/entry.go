@@ -95,11 +95,13 @@ func (im *impl) Run(t *testing.T) {
 
 		c.Subscribe(cfg.topic, cfg.qos, nil)
 
+		time.Sleep(1 * time.Second)
+
 		for i := 0; i < cfg.iterations; i++ {
 			c.Publish(cfg.topic, cfg.qos, false, cfg.payload)
 		}
 
-		assert.Equal(t, false, testTypes.WaitTimeout(cfg.wg, cfg.timeout*time.Second))
+		require.Equal(t, false, testTypes.WaitTimeout(cfg.wg, cfg.timeout*time.Second), "timed out for QoS %d", cfg.qos)
 	}
 
 	subDone.Add(3)
