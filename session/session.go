@@ -22,18 +22,21 @@ import (
 	"io"
 	"sync/atomic"
 
-	"github.com/juju/loggo"
 	"github.com/troian/surgemq/message"
 	persistenceTypes "github.com/troian/surgemq/persistence/types"
 	"github.com/troian/surgemq/systree"
 	"github.com/troian/surgemq/topics"
 	"github.com/troian/surgemq/types"
+	"go.uber.org/zap"
 )
 
 type managerCallbacks struct {
-	onClose      func(id string, s message.TopicsQoS)
-	onDisconnect func(id string, messages *persistenceTypes.SessionMessages, suspend bool)
-	onPublish    func(id string, msg *message.PublishMessage)
+	// onClose called when session has done all work and should be deleted
+	onStop func(id string, s message.TopicsQoS)
+	// onDisconnect called when session stopped net connection and should be either suspended or deleted
+	onDisconnect func(id string, messages *persistenceTypes.SessionMessages, shutdown bool)
+	// onPublish
+	onPublish func(id string, msg *message.PublishMessage)
 }
 
 // Config is system wide configuration parameters for every session
@@ -130,11 +133,14 @@ type Type struct {
 	packetID uint64
 }
 
-var appLog loggo.Logger
+var logger *zap.Logger
+var dLogger *zap.Logger
 
 func init() {
-	appLog = loggo.GetLogger("mq.session")
-	appLog.SetLogLevel(loggo.INFO)
+	logger, _ = zap.NewProduction()
+	logger.Named("server")
+	dLogger, _ = zap.NewDevelopment()
+	dLogger.Named("server")
 }
 
 func newSession(config config) (*Type, error) {
@@ -155,7 +161,11 @@ func newSession(config config) (*Type, error) {
 	// restore subscriptions if any
 	for t, q := range s.config.subscriptions {
 		if _, err := s.config.topicsMgr.Subscribe(t, q, &s.subscriber); err != nil {
-			appLog.Errorf("Couldn't subscribe [%s] to [%s/%d]: %s", s.config.id, t, q, err.Error())
+			logger.Error("Couldn't subscribe",
+				zap.String("ClientID", s.config.id),
+				zap.String("topic", t),
+				zap.Int8("QoS", int8(q)),
+				zap.Error(err))
 		}
 	}
 
@@ -224,7 +234,7 @@ func (s *Type) start(msg *message.ConnectMessage, conn io.Closer) (err error) {
 				ack:         s.onAck,
 				subscribe:   s.onSubscribe,
 				unSubscribe: s.onUnSubscribe,
-				close:       s.onClose,
+				disconnect:  s.onDisconnect,
 			},
 			packetsMetric: s.config.metric.packets,
 		})
@@ -255,7 +265,7 @@ func (s *Type) disconnect() {
 }
 
 // stop session. Function assumed to be invoked once server about to shutdown
-func (s *Type) stop() {
+func (s *Type) stop(wait bool) {
 	select {
 	case <-s.stopped:
 		return
@@ -264,8 +274,21 @@ func (s *Type) stop() {
 	}
 	s.disconnect()
 
+	if wait {
+		s.wg.conn.stopped.Wait()
+	}
+
 	if !s.clean {
-		s.config.callbacks.onClose(s.config.id, s.config.subscriptions)
+		s.config.callbacks.onStop(s.config.id, s.config.subscriptions)
+	}
+}
+
+func (s *Type) isOpen() bool {
+	select {
+	case <-s.stopped:
+		return false
+	default:
+		return true
 	}
 }
 
@@ -338,7 +361,7 @@ func (s *Type) publishToTopic(msg *message.PublishMessage) error {
 	// [MQTT-3.3.1.3]
 	if msg.Retain() {
 		if err := s.config.topicsMgr.Retain(msg); err != nil {
-			appLog.Tracef("Error retaining message [%s]: %v", s.config.id, err)
+			logger.Error("Error retaining message", zap.String("ClientID", s.config.id), zap.Error(err))
 		}
 
 		// [MQTT-3.3.1-7]
@@ -356,7 +379,7 @@ func (s *Type) publishToTopic(msg *message.PublishMessage) error {
 	msg.SetRetain(false)
 
 	if err := s.config.topicsMgr.Publish(msg); err != nil {
-		appLog.Errorf(" Error retrieving subscribers list [%s]: %v", s.config.id, err)
+		logger.Error(" Error retrieving subscribers list", zap.String("ClientID", s.config.id), zap.Error(err))
 	}
 
 	return nil
@@ -395,6 +418,10 @@ func (s *Type) onAckOut(msg message.Provider, status error) {
 // publishWorker publish messages coming from subscribed topics
 func (s *Type) publishWorker() {
 	defer func() {
+		if r := recover(); r != nil {
+			logger.Error("Recover from panic")
+		}
+
 		s.publisher.lock.Lock()
 		var next *list.Element
 		for elem := s.publisher.messages.Front(); elem != nil; elem = next {
@@ -408,9 +435,8 @@ func (s *Type) publishWorker() {
 		}
 		s.publisher.lock.Unlock()
 		s.publisher.stopped.Done()
-
 		if r := recover(); r != nil {
-			appLog.Errorf("Recover from panic: %v", r)
+			logger.Error("Recover from panic")
 		}
 	}()
 

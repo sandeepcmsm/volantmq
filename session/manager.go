@@ -27,6 +27,7 @@ import (
 	"github.com/troian/surgemq/systree"
 	"github.com/troian/surgemq/topics"
 	"github.com/troian/surgemq/types"
+	"go.uber.org/zap"
 )
 
 var (
@@ -110,7 +111,7 @@ func NewManager(cfg Config) (*Manager, error) {
 				if subscriptions, err = persistedSubs.Get(); err == nil && len(subscriptions) > 0 {
 					var sID string
 					if sID, err = s.ID(); err != nil {
-						appLog.Errorf("Couldn't get persisted session ID: %s", err.Error())
+						logger.Error("Couldn't get persisted session ID", zap.Error(err))
 					} else {
 						sCfg := config{
 							topicsMgr:      m.config.TopicsMgr,
@@ -121,7 +122,7 @@ func NewManager(cfg Config) (*Manager, error) {
 							id:             sID,
 							callbacks: managerCallbacks{
 								onDisconnect: m.onDisconnect,
-								onClose:      m.onClose,
+								onStop:       m.onStop,
 								onPublish:    m.onPublish,
 							},
 						}
@@ -131,18 +132,18 @@ func NewManager(cfg Config) (*Manager, error) {
 
 						var ses *Type
 						if ses, err = newSession(sCfg); err != nil {
-							appLog.Errorf("Couldn't start persisted session [%s]: %s", sID, err.Error())
+							logger.Error("Couldn't start persisted session", zap.String("ClientID", sID), zap.Error(err))
 						} else {
 							m.sessions.suspended.list[sID] = ses
 							m.sessions.suspended.count.Add(1)
 							if err = persistedSubs.Delete(); err != nil {
-								appLog.Errorf("Couldn't wipe subscriptions after restore [%s]: %s", sID, err.Error())
+								logger.Error("Couldn't wipe subscriptions after restore", zap.String("ClientID", sID), zap.Error(err))
 							}
 						}
 					}
 				}
 			} else {
-				appLog.Errorf(err.Error())
+				//logger.Error(zap.Error(err))
 			}
 		}
 	}
@@ -160,7 +161,7 @@ func (m *Manager) Start(msg *message.ConnectMessage, resp *message.ConnAckMessag
 		resp.SetSessionPresent(present)
 
 		if err = m.writeMessage(conn, resp); err != nil {
-			appLog.Errorf("Couldn't write CONNACK: %s", err.Error())
+			logger.Error("Couldn't write CONNACK", zap.Error(err))
 		}
 		if err == nil {
 			if ses != nil {
@@ -168,7 +169,7 @@ func (m *Manager) Start(msg *message.ConnectMessage, resp *message.ConnAckMessag
 				if err = ses.start(msg, conn); err != nil {
 					// should never get into this section.
 					// if so this code does not work as expected :)
-					appLog.Errorf("Something really bad happened: %s", err.Error())
+					logger.Error("Something really bad happened", zap.Error(err))
 				}
 			}
 		}
@@ -194,14 +195,17 @@ func (m *Manager) Start(msg *message.ConnectMessage, resp *message.ConnAckMessag
 		id = m.genSessionID()
 	}
 
-	m.sessions.active.lock.Lock()
-	ses = m.sessions.active.list[id]
+	m.sessions.active.lock.RLock()
 
+	alloc := true
 	// there is no such active session
 	// proceed to either persisted or new one
-	if ses == nil {
-		ses, present, err = m.allocSession(id, msg, resp)
-	} else {
+	if s, ok := m.sessions.active.list[id]; ok {
+		ses = s
+	}
+	m.sessions.active.lock.RUnlock()
+
+	if ses != nil {
 		replaced := true
 		// session already exists thus duplicate case happened
 		if !m.config.OnDup.Replace {
@@ -209,15 +213,10 @@ func (m *Manager) Start(msg *message.ConnectMessage, resp *message.ConnAckMessag
 			resp.SetReturnCode(message.ErrIdentifierRejected)
 			err = ErrDupNotAllowed
 			replaced = false
+			alloc = false
 		} else {
 			// duplicate allowed stop current session
-			m.sessions.active.lock.Unlock()
-			ses.stop()
-			m.sessions.active.lock.Lock()
-
-			// previous session stopped
-			// lets create new one
-			ses, present, err = m.allocSession(id, msg, resp)
+			ses.stop(true)
 		}
 
 		// notify subscriber about dup attempt
@@ -226,7 +225,9 @@ func (m *Manager) Start(msg *message.ConnectMessage, resp *message.ConnAckMessag
 		}
 	}
 
-	m.sessions.active.lock.Unlock()
+	if alloc {
+		ses, present, err = m.allocSession(id, msg, resp)
+	}
 
 	return nil
 }
@@ -240,9 +241,8 @@ func (m *Manager) Shutdown() error {
 	case <-m.quit:
 		return errors.New("already stopped")
 	default:
+		close(m.quit)
 	}
-
-	close(m.quit)
 
 	// 1. Now signal all active sessions to finish
 	m.sessions.active.lock.Lock()
@@ -259,7 +259,7 @@ func (m *Manager) Shutdown() error {
 
 	// 4. Signal suspended sessions to exit
 	for _, s := range m.sessions.suspended.list {
-		s.stop()
+		s.stop(false)
 	}
 
 	// 2. Wait until suspended sessions stopped
@@ -294,7 +294,7 @@ func (m *Manager) allocSession(id string, msg *message.ConnectMessage, resp *mes
 		id:             id,
 		callbacks: managerCallbacks{
 			onDisconnect: m.onDisconnect,
-			onClose:      m.onClose,
+			onStop:       m.onStop,
 			onPublish:    m.onPublish,
 		},
 	}
@@ -310,50 +310,47 @@ func (m *Manager) allocSession(id string, msg *message.ConnectMessage, resp *mes
 		// session exists. acquire it
 		delete(m.sessions.suspended.list, id)
 
-		ses = s
-		present = true
+		if msg.CleanSession() {
+			// client may want clear previously persisted state. If client with same ID is clean
+			// delete all persisted data
 
-		// do not check error here.
-		// if session has not been found there is no any persisted messages for it
-		pSes, _ = m.config.Persist.Get(id)
-	} else {
+			s.stop(false)
+			if err = m.config.Persist.Delete(id); err != nil {
+				dLogger.Debug("Couldn't wipe session after restore", zap.String("ClientID", id), zap.Error(err))
+			}
+		} else {
+			if s != nil && s.isOpen() {
+				ses = s
+				present = true
+				// do not check error here.
+				// if session has not been found there is no any persisted messages for it
+				pSes, _ = m.config.Persist.Get(id)
+				m.sessions.suspended.count.Done()
+			}
+		}
+	}
+	m.sessions.suspended.lock.Unlock()
+
+	if ses == nil {
 		// no such session in persisted list. It might be shutdown
 		if pSes, err = m.config.Persist.Get(id); err != nil {
 			// No such session exists at all. Just create new
-			appLog.Debugf("Create new persist entry for [%s]", id)
+			dLogger.Debug("Create new persist entry", zap.String("ClientID", id), zap.Error(err))
 			if _, err = m.config.Persist.New(id); err != nil {
-				appLog.Errorf("Couldn't create persis object for session [%s]: %s", id, err.Error())
+				logger.Error("Couldn't create persis object for session [%s]: %s", zap.String("ClientID", id), zap.Error(err))
 			}
 		} else {
 			// Session exists and is in shutdown state
-			appLog.Debugf("Restore session [%s] from shutdown", id)
+			dLogger.Debug("Restore session from shutdown", zap.String("ClientID", id))
 			present = true
 		}
-	}
 
-	m.sessions.suspended.lock.Unlock()
-
-	// check if new session is clean. if so wipe previous session before continue
-	if msg.CleanSession() && ses != nil {
-		ses.stop()
-		ses = nil
-
-		if err = m.config.Persist.Delete(id); err != nil {
-			appLog.Tracef("Couldn't wipe session after restore [%s]: %s", id, err.Error())
-		}
-
-		present = false
-	} else if !msg.CleanSession() && ses != nil {
-		m.sessions.suspended.count.Done()
-	}
-
-	if ses == nil {
 		if ses, err = newSession(sConfig); err != nil {
 			ses = nil
 			resp.SetReturnCode(message.ErrServerUnavailable)
 			if !msg.CleanSession() {
 				if err = m.config.Persist.Delete(id); err != nil {
-					appLog.Errorf("Couldn't wipe session after restore [%s]: %s", id, err.Error())
+					logger.Error("Couldn't wipe session after restore", zap.String("ClientID", id), zap.Error(err))
 				}
 			}
 		}
@@ -368,34 +365,36 @@ func (m *Manager) allocSession(id string, msg *message.ConnectMessage, resp *mes
 				if storedMessages, err = sesMessages.Load(); err == nil {
 					ses.restore(storedMessages)
 					if err = sesMessages.Delete(); err != nil {
-						appLog.Errorf("Couldn't wipe messages after restore [%s]: %s", id, err.Error())
+						logger.Error("Couldn't wipe messages after restore", zap.String("ClientID", id), zap.Error(err))
 					}
 				}
 			}
 		}
 
+		m.sessions.active.lock.Lock()
 		m.sessions.active.list[id] = ses
+		m.sessions.active.lock.Unlock()
 		m.sessions.active.count.Add(1)
 	}
 
 	return ses, present, err
 }
 
-// close is only invoked for non-clean session
-func (m *Manager) onClose(id string, s message.TopicsQoS) {
+// onStop is only invoked for non-clean session
+func (m *Manager) onStop(id string, s message.TopicsQoS) {
 	defer m.sessions.suspended.count.Done()
 
 	ses, err := m.config.Persist.Get(id)
 	if err != nil {
-		appLog.Errorf("Trying to persist session that has not been initiated for persistence [%s]: %s", id, err.Error())
+		logger.Error("Trying to persist session that has not been initiated for persistence", zap.String("ClientID", id), zap.Error(err))
 	} else {
 		var sesSubs persistenceTypes.Subscriptions
 		if sesSubs, err = ses.Subscriptions(); err == nil {
 			if err = sesSubs.Add(s); err != nil {
-				appLog.Errorf("Couldn't persist subscriptions [%s]: %s", id, err.Error())
+				logger.Error("Couldn't persist subscriptions", zap.String("ClientID", id), zap.Error(err))
 			}
 		} else {
-			appLog.Errorf(err.Error())
+			logger.Error("Error", zap.Error(err))
 		}
 	}
 }
@@ -405,48 +404,49 @@ func (m *Manager) onPublish(id string, msg *message.PublishMessage) {
 		var sesMsg persistenceTypes.Messages
 		if sesMsg, err = ses.Messages(); err == nil {
 			if err = sesMsg.Store("out", []message.Provider{msg}); err != nil {
-				appLog.Errorf("Couldn't store messages [%s]: %s", id, err.Error())
+				logger.Error("Couldn't store messages", zap.String("ClientID", id), zap.Error(err))
 			}
 		} else {
-			appLog.Errorf("Couldn't store messages [%s]: %s", id, err.Error())
+			logger.Error("Couldn't store messages", zap.String("ClientID", id), zap.Error(err))
 		}
 	} else {
-		appLog.Errorf("Couldn't persist message for shutdown session [%s]: %s", id, err.Error())
+		logger.Error("Couldn't persist message for shutdown session", zap.String("ClientID", id), zap.Error(err))
 	}
 }
 
 func (m *Manager) onDisconnect(id string, messages *persistenceTypes.SessionMessages, shutdown bool) {
 	defer m.sessions.active.count.Done()
 
+	// non-nil messages object means this is non-clean session
 	if messages != nil {
+		// persist messages if any
 		if ses, err := m.config.Persist.Get(id); err != nil {
-			appLog.Errorf("Trying to persist session that has not been initiated for persistence [%s]: %s", id, err.Error())
+			logger.Error("Trying to persist session that has not been initiated for persistence", zap.String("ClientID", id), zap.Error(err))
 		} else {
 			var sesMsg persistenceTypes.Messages
 			if sesMsg, err = ses.Messages(); err == nil {
 				if len(messages.Out.Messages) > 0 {
-
 					if err = sesMsg.Store("out", messages.Out.Messages); err != nil {
-						appLog.Errorf("Couldn't persist messages [%s]: %s", id, err.Error())
+						logger.Error("Couldn't persist messages", zap.String("ClientID", id), zap.Error(err))
 					}
 				}
 
 				if len(messages.In.Messages) > 0 {
 					if err = sesMsg.Store("in", messages.In.Messages); err != nil {
-						appLog.Errorf("Couldn't persist messages [%s]: %s", id, err.Error())
+						logger.Error("Couldn't persist messages", zap.String("ClientID", id), zap.Error(err))
 					}
 				}
 			} else {
-				appLog.Errorf("Couldn't persist messages [%s]: %s", id, err.Error())
+				logger.Error("Couldn't persist messages", zap.String("ClientID", id), zap.Error(err))
 			}
 		}
 
+		// if session has active subscriptions move it to suspended place
 		if !shutdown {
-			// copy session to persisted list
 			m.sessions.suspended.lock.Lock()
-			m.sessions.active.lock.Lock()
+			m.sessions.active.lock.RLock()
 			m.sessions.suspended.list[id] = m.sessions.active.list[id]
-			m.sessions.active.lock.Unlock()
+			m.sessions.active.lock.RUnlock()
 			m.sessions.suspended.count.Add(1)
 			m.sessions.suspended.lock.Unlock()
 		}
@@ -467,10 +467,10 @@ func (m *Manager) writeMessage(conn io.Closer, msg message.Provider) error {
 	buf := make([]byte, msg.Len())
 	_, err := msg.Encode(buf)
 	if err != nil {
-		appLog.Debugf("Write error: %v", err)
+		dLogger.Debug("Write error", zap.Error(err))
 		return err
 	}
-	appLog.Debugf("Writing: %s", msg)
+	//appLog.Debugf("Writing: %s", msg)
 
 	return m.writeMessageBuffer(conn, buf)
 }
