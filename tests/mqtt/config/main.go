@@ -2,6 +2,7 @@ package config
 
 import "testing"
 
+// nolint: golint
 type Provider struct {
 	Host         string
 	ProxyHost    string
@@ -12,14 +13,17 @@ type Provider struct {
 
 var p Provider
 
+// nolint: golint
 func Set(c Provider) {
 	p = c
 }
 
+// nolint: golint
 func Get() Provider {
 	return p
 }
 
+// nolint: golint
 type TestingWrap interface {
 	Name() string
 	Configure()

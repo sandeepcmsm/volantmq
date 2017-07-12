@@ -4,12 +4,13 @@ import (
 	"testing"
 
 	"fmt"
+	"time"
+
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 	assert "github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/troian/surgemq/tests/mqtt/config"
 	testTypes "github.com/troian/surgemq/tests/types"
-	"time"
 )
 
 type impl struct {
@@ -21,14 +22,17 @@ const (
 	testName = "disconnect with quiesce timeout should allow exchanges to complete"
 )
 
+// nolint: golint
 func New() testTypes.Provider {
 	return &impl{}
 }
 
+// nolint: golint
 func (im *impl) Name() string {
 	return testName
 }
 
+// nolint: golint
 func (im *impl) Run(t *testing.T) {
 	test_topic := "Persistence test 2"
 	subsQos := byte(2)

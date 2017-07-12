@@ -20,14 +20,17 @@ const (
 	testName = "connack codes"
 )
 
+// nolint: golint
 func New() testTypes.Provider {
 	return &impl{}
 }
 
+// nolint: golint
 func (im *impl) Name() string {
 	return testName
 }
 
+// nolint: golint
 func (im *impl) Run(t *testing.T) {
 	cfg := config.Get()
 

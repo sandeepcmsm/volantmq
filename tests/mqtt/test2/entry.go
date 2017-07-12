@@ -3,13 +3,14 @@ package test2
 import (
 	"testing"
 
+	"sync"
+	"time"
+
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/troian/surgemq/tests/mqtt/config"
 	testTypes "github.com/troian/surgemq/tests/types"
-	"sync"
-	"time"
 )
 
 type impl struct {
@@ -21,14 +22,17 @@ const (
 	testName = "multi threaded client using callbacks"
 )
 
+// nolint: golint
 func New() testTypes.Provider {
 	return &impl{}
 }
 
+// nolint: golint
 func (im *impl) Name() string {
 	return testName
 }
 
+// nolint: golint
 func (im *impl) Run(t *testing.T) {
 	test_topic := "GO client test2"
 	subsQos := byte(2)
@@ -85,7 +89,7 @@ func (im *impl) Run(t *testing.T) {
 		wgDelivered.Add(iterations)
 
 		for i := 0; i < iterations; i++ {
-			token := c.Publish(test_topic, qos, false, payload)
+			lTok := c.Publish(test_topic, qos, false, payload)
 			require.NoError(t, token.Error())
 
 			go func(tok MQTT.Token) {
@@ -93,7 +97,7 @@ func (im *impl) Run(t *testing.T) {
 				if assert.NoError(t, token.Error()) {
 					wgDelivered.Done()
 				}
-			}(token)
+			}(lTok)
 
 			// wait message has arrived
 			var timeout bool

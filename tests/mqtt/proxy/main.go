@@ -3,11 +3,12 @@ package proxy
 import (
 	"bytes"
 	"errors"
-	"github.com/troian/surgemq/message"
-	"github.com/troian/surgemq/server"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/troian/surgemq/message"
+	"github.com/troian/surgemq/server"
 )
 
 type client struct {
@@ -19,6 +20,7 @@ type client struct {
 	signalStop func(id string)
 }
 
+// nolint: golint
 type Provider struct {
 	ln        net.Listener
 	done      chan struct{}
@@ -27,6 +29,7 @@ type Provider struct {
 	wgClients sync.WaitGroup
 }
 
+// nolint: golint
 func NewProxy(from string, to string) (*Provider, error) {
 	p := &Provider{
 		done:    make(chan struct{}),
@@ -90,7 +93,7 @@ func NewProxy(from string, to string) (*Provider, error) {
 			var out net.Conn
 
 			if out, err = net.Dial("tcp", to); err != nil {
-				in.Close()
+				in.Close() // nolint: errcheck
 				continue
 			}
 			cl := &client{
@@ -109,13 +112,14 @@ func NewProxy(from string, to string) (*Provider, error) {
 			cl.serve()
 
 			// Proxy CONNECT message over to MQTT broker
-			out.Write(buf)
+			out.Write(buf) // nolint: errcheck
 		}
 	}()
 
 	return p, nil
 }
 
+// nolint: golint
 func (p *Provider) Shutdown() error {
 	select {
 	case <-p.done:
@@ -123,7 +127,7 @@ func (p *Provider) Shutdown() error {
 	default:
 	}
 
-	p.ln.Close()
+	p.ln.Close() // nolint: errcheck
 	return nil
 }
 
@@ -148,7 +152,7 @@ func (c *client) toBroker() {
 	}()
 
 	alive := true
-	for alive == true {
+	for alive {
 		var buf []byte
 		var err error
 		if buf, err = server.GetMessageBuffer(c.in); err != nil {
@@ -160,13 +164,13 @@ func (c *client) toBroker() {
 		} else {
 			switch m := mP.(type) {
 			case *message.PublishMessage:
-				if (m.Topic() == "MQTTSAS topic") && (bytes.Compare(m.Payload(), []byte("TERMINATE")) == 0) {
+				if (m.Topic() == "MQTTSAS topic") && bytes.Equal(m.Payload(), []byte("TERMINATE")) {
 					alive = false
 				} else {
-					c.out.Write(buf)
+					c.out.Write(buf) // nolint: errcheck
 				}
 			default:
-				c.out.Write(buf)
+				c.out.Write(buf) // nolint: errcheck
 			}
 		}
 	}
@@ -182,7 +186,7 @@ func (c *client) fromBroker() {
 	for {
 		total, err := c.out.Read(buf)
 		if total > 0 {
-			c.in.Write(buf[:total])
+			c.in.Write(buf[:total]) // nolint: errcheck
 		}
 
 		if err != nil {
@@ -199,8 +203,8 @@ func (c *client) stop() {
 		close(c.done)
 	}
 
-	c.in.Close()
-	c.out.Close()
+	c.in.Close()  // nolint: errcheck
+	c.out.Close() // nolint: errcheck
 
 	c.wgWorkers.Wait()
 

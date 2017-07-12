@@ -12,10 +12,23 @@ import (
 	"github.com/troian/surgemq/tests/mqtt/proxy"
 
 	"fmt"
+	"time"
+
+	"github.com/troian/surgemq/tests/mqtt/test1"
+	"github.com/troian/surgemq/tests/mqtt/test10"
+	"github.com/troian/surgemq/tests/mqtt/test11"
+	"github.com/troian/surgemq/tests/mqtt/test12"
+	"github.com/troian/surgemq/tests/mqtt/test13"
+	"github.com/troian/surgemq/tests/mqtt/test2"
+	"github.com/troian/surgemq/tests/mqtt/test3"
+	"github.com/troian/surgemq/tests/mqtt/test4"
+	"github.com/troian/surgemq/tests/mqtt/test5"
+	"github.com/troian/surgemq/tests/mqtt/test6"
+	"github.com/troian/surgemq/tests/mqtt/test7"
+	"github.com/troian/surgemq/tests/mqtt/test8"
 	testTypes "github.com/troian/surgemq/tests/types"
 	_ "github.com/troian/surgemq/topics/mem"
 	"github.com/troian/surgemq/types"
-	"time"
 )
 
 type internalAuth struct {
@@ -23,6 +36,23 @@ type internalAuth struct {
 }
 
 var testList []testTypes.Provider
+
+func init() {
+	testList = []testTypes.Provider{
+		test1.New(),
+		test2.New(),
+		test3.New(),
+		test4.New(),
+		test5.New(),
+		test6.New(),
+		test7.New(),
+		test8.New(),
+		test10.New(),
+		test11.New(),
+		test12.New(),
+		test13.New(),
+	}
+}
 
 func (a internalAuth) Password(user, password string) error {
 	if hash, ok := a.creds[user]; ok {
@@ -91,11 +121,13 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	config := &server.Listener{
-		Scheme:      "tcp4",
-		Host:        "",
-		Port:        1883,
-		AuthManager: authMng,
+	config := &server.ListenerTCP{
+		Scheme: "tcp4",
+		Host:   "",
+		ListenerBase: server.ListenerBase{
+			Port:        1883,
+			AuthManager: authMng,
+		},
 	}
 
 	if err = srv.ListenAndServe(config); err != nil {
@@ -108,11 +140,9 @@ func TestMain(m *testing.M) {
 
 	res := m.Run()
 
-	prx.Shutdown()
+	prx.Shutdown() // nolint: errcheck
 
-	if err = srv.Close(); err != nil {
-
-	}
+	srv.Close() // nolint: errcheck
 
 	os.Exit(res)
 }

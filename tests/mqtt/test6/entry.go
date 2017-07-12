@@ -9,9 +9,10 @@ import (
 	//"sync"
 	//"time"
 	"bytes"
+	"time"
+
 	"github.com/troian/surgemq/tests/mqtt/config"
 	testTypes "github.com/troian/surgemq/tests/types"
-	"time"
 )
 
 type impl struct {
@@ -23,14 +24,17 @@ const (
 	testName = "connection lost and will messages"
 )
 
+// nolint: golint
 func New() testTypes.Provider {
 	return &impl{}
 }
 
+// nolint: golint
 func (im *impl) Name() string {
 	return testName
 }
 
+// nolint: golint
 func (im *impl) Run(t *testing.T) {
 	will_topic := "GO Test 6: will topic"
 	will_message := "will message from Client-1"
@@ -84,7 +88,7 @@ func (im *impl) Run(t *testing.T) {
 	require.NoError(t, token.Error())
 
 	token = c2.Subscribe(will_topic, 2, func(client MQTT.Client, msg MQTT.Message) {
-		if msg.Topic() == will_topic && (bytes.Compare([]byte(will_message), msg.Payload()) == 0) {
+		if msg.Topic() == will_topic && bytes.Equal([]byte(will_message), msg.Payload()) {
 			willArrived <- true
 		}
 	})

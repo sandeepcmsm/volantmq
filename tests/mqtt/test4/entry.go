@@ -21,14 +21,17 @@ const (
 	testName = "persistence"
 )
 
+// nolint: golint
 func New() testTypes.Provider {
 	return &impl{}
 }
 
+// nolint: golint
 func (im *impl) Name() string {
 	return testName
 }
 
+// nolint: golint
 func (im *impl) Run(t *testing.T) {
 	worker := func(qos byte) {
 		test_topic := "Persistence test 1"

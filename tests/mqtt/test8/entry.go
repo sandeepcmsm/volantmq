@@ -1,16 +1,18 @@
 package test8
 
 import (
-	assert "github.com/stretchr/testify/assert"
 	"testing"
+
+	assert "github.com/stretchr/testify/assert"
+
+	"sync"
+	"sync/atomic"
+	"time"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"github.com/stretchr/testify/require"
 	"github.com/troian/surgemq/tests/mqtt/config"
 	testTypes "github.com/troian/surgemq/tests/types"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 type impl struct {
@@ -22,14 +24,17 @@ const (
 	testName = "multiple threads using callbacks"
 )
 
+// nolint: golint
 func New() testTypes.Provider {
 	return &impl{}
 }
 
+// nolint: golint
 func (im *impl) Name() string {
 	return testName
 }
 
+// nolint: golint
 func (im *impl) Run(t *testing.T) {
 	var failures int32
 	iterations := 50
@@ -86,8 +91,8 @@ func (im *impl) Run(t *testing.T) {
 	require.NoError(t, token.Error())
 
 	type subTestConfig struct {
-		wg         *sync.WaitGroup
-		done       *sync.WaitGroup
+		wg *sync.WaitGroup
+		//done       *sync.WaitGroup
 		payload    []byte
 		topic      string
 		qos        byte

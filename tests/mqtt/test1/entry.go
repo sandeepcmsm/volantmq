@@ -19,14 +19,17 @@ const (
 	testName = "single threaded client using receive"
 )
 
+// nolint: golint
 func New() testTypes.Provider {
 	return &impl{}
 }
 
+// nolint: golint
 func (im *impl) Name() string {
 	return testName
 }
 
+// nolint: golint
 func (im *impl) Run(t *testing.T) {
 	test_topic := "GO client test1"
 	subsQos := byte(2)
@@ -64,8 +67,8 @@ func (im *impl) Run(t *testing.T) {
 		payload := "a much longer message that we can shorten to the extent that we need to payload up to 11"
 
 		for i := 0; i < iterations; i++ {
-			token := c.Publish(test_topic, qos, false, payload)
-			token.Wait()
+			lTok := c.Publish(test_topic, qos, false, payload)
+			lTok.Wait()
 			require.NoError(t, token.Error())
 
 			msg := <-receiver

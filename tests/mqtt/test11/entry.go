@@ -3,14 +3,15 @@ package test11
 import (
 	"testing"
 
+	"strconv"
+	"sync"
+	"time"
+
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/troian/surgemq/tests/mqtt/config"
 	testTypes "github.com/troian/surgemq/tests/types"
-	"strconv"
-	"sync"
-	"time"
 )
 
 var topics []string
@@ -30,14 +31,17 @@ func init() {
 	wildTopics = []string{"TopicA/+", "+/C", "#", "/#", "/+", "+/+", "TopicA/#"}
 }
 
+// nolint: golint
 func New() testTypes.Provider {
 	return &impl{}
 }
 
+// nolint: golint
 func (im *impl) Name() string {
 	return testName
 }
 
+// nolint: golint
 func (im *impl) Run(t *testing.T) {
 	timeout := 5 * time.Second
 

@@ -1,15 +1,17 @@
 package test10
 
 import (
-	assert "github.com/stretchr/testify/assert"
 	"testing"
+
+	assert "github.com/stretchr/testify/assert"
+
+	"sync"
+	"time"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"github.com/stretchr/testify/require"
 	"github.com/troian/surgemq/tests/mqtt/config"
 	testTypes "github.com/troian/surgemq/tests/types"
-	"sync"
-	"time"
 )
 
 type impl struct {
@@ -21,14 +23,17 @@ const (
 	testName = "async connect"
 )
 
+// nolint: golint
 func New() testTypes.Provider {
 	return &impl{}
 }
 
+// nolint: golint
 func (im *impl) Name() string {
 	return testName
 }
 
+// nolint: golint
 func (im *impl) Run(t *testing.T) {
 	payload := []byte("a much longer message that we can shorten to the extent that we need to")
 	test_topic := "async test topic"

@@ -6,11 +6,13 @@ import (
 	"time"
 )
 
+// nolint: golint
 type Provider interface {
 	Name() string
 	Run(t *testing.T)
 }
 
+// nolint: golint
 func WaitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
 	c := make(chan struct{})
 	go func() {
