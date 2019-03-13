@@ -4,12 +4,14 @@ import (
 	"crypto/tls"
 	"net"
 	"time"
+	"volantmq/configuration"
+	"volantmq/systree"
+	"volantmq/types"
 
-	"github.com/VolantMQ/volantmq/types"
+	//"github.com/VolantMQ/volantmq/types"
 	"go.uber.org/zap"
-
-	"github.com/VolantMQ/volantmq/configuration"
-	"github.com/VolantMQ/volantmq/systree"
+	//"github.com/VolantMQ/volantmq/configuration"
+	//"github.com/VolantMQ/volantmq/systree"
 )
 
 // ConfigTCP configuration of tcp transport

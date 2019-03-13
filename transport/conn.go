@@ -2,9 +2,11 @@ package transport
 
 import (
 	"net"
+	"volantmq/auth"
+	"volantmq/systree"
 
-	"github.com/VolantMQ/volantmq/auth"
-	"github.com/VolantMQ/volantmq/systree"
+	//"github.com/VolantMQ/volantmq/auth"
+	//"github.com/VolantMQ/volantmq/systree"
 	"github.com/troian/easygo/netpoll"
 )
 

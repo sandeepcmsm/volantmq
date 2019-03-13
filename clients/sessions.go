@@ -10,21 +10,29 @@ import (
 	"sync/atomic"
 	"time"
 	"unsafe"
+	"volantmq/auth"
+	"volantmq/configuration"
+	"volantmq/connection"
+	"volantmq/subscriber"
+	"volantmq/systree"
+	"volantmq/topics/types"
+	"volantmq/transport"
+	"volantmq/types"
 
-	"github.com/schollz/progressbar"
+	"github.com/schollz/progressbar/v2"
 
 	"github.com/VolantMQ/vlapi/mqttp"
 	"github.com/VolantMQ/vlapi/plugin/auth"
 	"github.com/VolantMQ/vlapi/plugin/persistence"
 	"github.com/VolantMQ/vlapi/subscriber"
-	"github.com/VolantMQ/volantmq/auth"
-	"github.com/VolantMQ/volantmq/configuration"
-	"github.com/VolantMQ/volantmq/connection"
-	"github.com/VolantMQ/volantmq/subscriber"
-	"github.com/VolantMQ/volantmq/systree"
-	"github.com/VolantMQ/volantmq/topics/types"
-	"github.com/VolantMQ/volantmq/transport"
-	"github.com/VolantMQ/volantmq/types"
+	//"github.com/VolantMQ/volantmq/auth"
+	//"github.com/VolantMQ/volantmq/configuration"
+	//"github.com/VolantMQ/volantmq/connection"
+	//"github.com/VolantMQ/volantmq/subscriber"
+	//"github.com/VolantMQ/volantmq/systree"
+	//"github.com/VolantMQ/volantmq/topics/types"
+	//"github.com/VolantMQ/volantmq/transport"
+	//"github.com/VolantMQ/volantmq/types"
 	"go.uber.org/zap"
 )
 
@@ -129,7 +137,7 @@ func NewManager(c *Config) (*Manager, error) {
 		context := &loadContext{
 			bar: progressbar.NewOptions(
 				int(pCount),
-				progressbar.OptionShowCount(),
+				//progressbar.OptionShowCount(),
 				progressbar.OptionShowIts()),
 			preloadConfigs: make(map[string]*preloadConfig),
 		}

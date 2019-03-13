@@ -3,12 +3,14 @@ package connection
 import (
 	"errors"
 	"time"
+	"volantmq/systree"
+	"volantmq/transport"
 
 	"github.com/VolantMQ/vlapi/mqttp"
 	"github.com/VolantMQ/vlapi/plugin/auth"
 	"github.com/VolantMQ/vlapi/plugin/persistence"
-	"github.com/VolantMQ/volantmq/systree"
-	"github.com/VolantMQ/volantmq/transport"
+	//"github.com/VolantMQ/volantmq/systree"
+	//"github.com/VolantMQ/volantmq/transport"
 )
 
 // OnAuthCb ...

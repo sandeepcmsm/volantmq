@@ -2,8 +2,8 @@ package systree
 
 import (
 	"sync/atomic"
-
-	"github.com/VolantMQ/volantmq/types"
+	"volantmq/types"
+	//"github.com/VolantMQ/volantmq/types"
 )
 
 type stat struct {

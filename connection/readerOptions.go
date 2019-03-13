@@ -2,10 +2,12 @@ package connection
 
 import (
 	"time"
+	"volantmq/systree"
+	"volantmq/transport"
 
 	"github.com/VolantMQ/vlapi/mqttp"
-	"github.com/VolantMQ/volantmq/systree"
-	"github.com/VolantMQ/volantmq/transport"
+	//"github.com/VolantMQ/volantmq/systree"
+	//"github.com/VolantMQ/volantmq/transport"
 	"go.uber.org/zap"
 )
 

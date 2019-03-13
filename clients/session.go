@@ -3,14 +3,17 @@ package clients
 import (
 	"sync"
 	"time"
+	"volantmq/configuration"
+	"volantmq/connection"
+	"volantmq/types"
 
 	"github.com/VolantMQ/vlapi/mqttp"
 	"github.com/VolantMQ/vlapi/plugin/auth"
 	"github.com/VolantMQ/vlapi/plugin/persistence"
 	"github.com/VolantMQ/vlapi/subscriber"
-	"github.com/VolantMQ/volantmq/configuration"
-	"github.com/VolantMQ/volantmq/connection"
-	"github.com/VolantMQ/volantmq/types"
+	//"github.com/VolantMQ/volantmq/configuration"
+	//"github.com/VolantMQ/volantmq/connection"
+	//"github.com/VolantMQ/volantmq/types"
 	"go.uber.org/zap"
 )
 

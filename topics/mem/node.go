@@ -2,12 +2,15 @@ package mem
 
 import (
 	"strings"
+	"volantmq/systree"
+	"volantmq/topics/types"
+	"volantmq/types"
 
 	"github.com/VolantMQ/vlapi/mqttp"
 	"github.com/VolantMQ/vlapi/subscriber"
-	"github.com/VolantMQ/volantmq/systree"
-	"github.com/VolantMQ/volantmq/topics/types"
-	"github.com/VolantMQ/volantmq/types"
+	//"github.com/VolantMQ/volantmq/systree"
+	//"github.com/VolantMQ/volantmq/topics/types"
+	//"github.com/VolantMQ/volantmq/types"
 )
 
 type topicSubscriber struct {

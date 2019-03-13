@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
@@ -12,15 +13,19 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"volantmq/auth"
+	"volantmq/configuration"
+	"volantmq/server"
+	"volantmq/transport"
 
 	"github.com/VolantMQ/vlapi/plugin"
 	"github.com/VolantMQ/vlapi/plugin/auth"
 	"github.com/VolantMQ/vlapi/plugin/persistence"
 	"github.com/VolantMQ/vlapi/plugin/persistence/mem"
-	"github.com/VolantMQ/volantmq/auth"
-	"github.com/VolantMQ/volantmq/configuration"
-	"github.com/VolantMQ/volantmq/server"
-	"github.com/VolantMQ/volantmq/transport"
+	//"github.com/VolantMQ/volantmq/auth"
+	//"github.com/VolantMQ/volantmq/configuration"
+	//"github.com/VolantMQ/volantmq/server"
+	//"github.com/VolantMQ/volantmq/transport"
 	"github.com/troian/healthcheck"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
@@ -149,6 +154,9 @@ func loadMqttListeners(defaultAuth *auth.Manager, lCfg *configuration.ListenersC
 }
 
 func loadListeners(defaultAuth *auth.Manager, lst *configuration.ListenersConfig) (map[string][]interface{}, error) {
+	if logger == nil {
+		fmt.Println("its null man why?")
+	}
 	logger.Info("configuring listeners")
 
 	listeners := make(map[string][]interface{})
@@ -234,15 +242,18 @@ func (ctx *appContext) loadAuth(cfg *configuration.Config) (*auth.Manager, error
 	logger.Info("configuring auth")
 
 	a, ok := cfg.Plugins.Config["auth"]
+
 	if !ok {
 		logger.Fatalf("\tno auth config found at plugins.config.auth")
 		return nil, errors.New("")
 	}
+	//logger.Info("configuring auth")
 
 	if len(cfg.Auth.Order) == 0 {
 		logger.Fatalf("\tdefault auth order should not be empty auth.Order")
 		return nil, errors.New("")
 	}
+	//logger.Info("configuring auth")
 
 	for idx, cfgEntry := range a.([]interface{}) {
 		entry := cfgEntry.(map[interface{}]interface{})
@@ -294,7 +305,7 @@ func (ctx *appContext) loadAuth(cfg *configuration.Config) (*auth.Manager, error
 			}
 		}
 	}
-
+	//logger.Info("configuring auth")
 	def, err := auth.NewManager(cfg.Auth.Order, cfg.Auth.Anonymous)
 
 	if err != nil {
@@ -302,8 +313,8 @@ func (ctx *appContext) loadAuth(cfg *configuration.Config) (*auth.Manager, error
 		return nil, err
 	}
 
-	logger.Info("\tdefault auth order: ", cfg.Auth.Order)
-	logger.Info("\tdefault auth anonymous: ", cfg.Auth.Anonymous)
+	//logger.Info("\tdefault auth order: ", cfg.Auth.Order)
+	//logger.Info("\tdefault auth anonymous: ", cfg.Auth.Anonymous)
 
 	return def, nil
 }
@@ -575,7 +586,6 @@ func main() {
 
 	logger = configuration.GetHumanLogger()
 
-	logger = configuration.GetHumanLogger()
 	logger.Info("starting service...")
 	logger.Infof("\n\tbuild info:\n"+
 		"\t\tcommit : %s\n"+
@@ -598,28 +608,28 @@ func main() {
 		readinessChecks: make(map[string]healthcheck.Check),
 	}
 
-	if err = ctx.loadPlugins(&config.Plugins); err != nil {
-		return
-	}
-
-	if c, ok := config.Plugins.Config["debug"]; ok {
-		if err = ctx.configureDebugPlugins(c); err != nil {
-			logger.Error("loading debug plugins", zap.Error(err))
-			return
-		}
-	}
-	if c, ok := config.Plugins.Config["health"]; ok {
-		if err = ctx.configureHealthPlugins(c); err != nil {
-			logger.Error("loading health plugins", zap.Error(err))
-			return
-		}
-	}
-
+	//if err = ctx.loadPlugins(&config.Plugins); err != nil {
+	//	fmt.Println("actually no plugins")
+	//	return
+	//}
+	//
+	//if c, ok := config.Plugins.Config["debug"]; ok {
+	//	if err = ctx.configureDebugPlugins(c); err != nil {
+	//		logger.Error("loading debug plugins", zap.Error(err))
+	//		return
+	//	}
+	//}
+	//if c, ok := config.Plugins.Config["health"]; ok {
+	//	if err = ctx.configureHealthPlugins(c); err != nil {
+	//		logger.Error("loading health plugins", zap.Error(err))
+	//		return
+	//	}
+	//}
+	//
 	if persist, err = ctx.loadPersistence(config.Plugins.Config["persistence"]); err != nil {
 		logger.Error("loading persistence plugins", zap.Error(err))
 		return
 	}
-
 	if defaultAuth, err = ctx.loadAuth(config); err != nil {
 		logger.Error("loading auth plugins", zap.Error(err))
 		return

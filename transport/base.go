@@ -3,10 +3,13 @@ package transport
 import (
 	"errors"
 	"sync"
+	"volantmq/auth"
+	"volantmq/systree"
+	"volantmq/types"
 
-	"github.com/VolantMQ/volantmq/auth"
-	"github.com/VolantMQ/volantmq/systree"
-	"github.com/VolantMQ/volantmq/types"
+	//"github.com/VolantMQ/volantmq/auth"
+	//"github.com/VolantMQ/volantmq/systree"
+	//"github.com/VolantMQ/volantmq/types"
 	"github.com/troian/easygo/netpoll"
 	"go.uber.org/zap"
 )

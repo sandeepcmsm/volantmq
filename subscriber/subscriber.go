@@ -3,13 +3,15 @@ package subscriber
 import (
 	"sync"
 	"unsafe"
+	"volantmq/configuration"
+	"volantmq/topics/types"
 
 	"go.uber.org/zap"
 
 	"github.com/VolantMQ/vlapi/mqttp"
 	"github.com/VolantMQ/vlapi/subscriber"
-	"github.com/VolantMQ/volantmq/configuration"
-	"github.com/VolantMQ/volantmq/topics/types"
+	//"github.com/VolantMQ/volantmq/configuration"
+	//"github.com/VolantMQ/volantmq/topics/types"
 )
 
 // Config subscriber config options

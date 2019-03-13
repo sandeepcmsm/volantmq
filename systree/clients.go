@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"sync/atomic"
 	"time"
+	"volantmq/types"
 
 	"github.com/VolantMQ/vlapi/mqttp"
-	"github.com/VolantMQ/volantmq/types"
+	//"github.com/VolantMQ/volantmq/types"
 )
 
 // ClientConnectStatus is argument to client connected state

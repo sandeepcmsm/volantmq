@@ -50,10 +50,11 @@ func init() {
 
 	cfg.humanLog = log.Sugar()
 
-	WorkDir = "/var/lib/volantmq"
+	WorkDir = "/Users/sandeeepcmsm/Desktop/goApps/volantmq"
 	PluginsDir = WorkDir + "/plugins"
+	configFile = "/Users/sandeeepcmsm/Desktop/goApps/volantmq/examples/config.yaml"
 
-	configFile, _ = os.LookupEnv("VOLANTMQ_CONFIG")
+	//configFile, _ = os.LookupEnv("VOLANTMQ_CONFIG")
 
 	if str, ok := os.LookupEnv("VOLANTMQ_WORK_DIR"); ok {
 		WorkDir = str

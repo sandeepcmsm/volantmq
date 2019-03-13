@@ -3,10 +3,11 @@ package topicsTypes
 import (
 	"errors"
 	"regexp"
+	"volantmq/types"
 
 	"github.com/VolantMQ/vlapi/mqttp"
 	"github.com/VolantMQ/vlapi/subscriber"
-	"github.com/VolantMQ/volantmq/types"
+	//"github.com/VolantMQ/volantmq/types"
 )
 
 const (

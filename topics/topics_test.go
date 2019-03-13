@@ -2,10 +2,11 @@ package topics
 
 import (
 	"testing"
+	"volantmq/topics/types"
 
 	"github.com/VolantMQ/vlapi/mqttp"
 	"github.com/VolantMQ/vlapi/subscriber"
-	"github.com/VolantMQ/volantmq/topics/types"
+	//"github.com/VolantMQ/volantmq/topics/types"
 	"github.com/stretchr/testify/require"
 )
 

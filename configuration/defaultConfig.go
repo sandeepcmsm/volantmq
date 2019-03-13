@@ -46,12 +46,10 @@ mqtt:
     maxPacketSize: 268435455
     maxTopicAlias: 65535
     maxQoS: 2
-  clientId:
-    regex: 
 listeners:
-  defaultAddr: ""
+  defaultAddr: "0.0.0.0"
   mqtt:
     tcp:
       1883:
-        def: ""
+        auth:
 `)

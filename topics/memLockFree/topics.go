@@ -17,13 +17,17 @@ package memLockFree
 import (
 	"sync"
 	"time"
+	"volantmq/configuration"
+	"volantmq/systree"
+	"volantmq/topics/types"
+	"volantmq/types"
 
 	"github.com/VolantMQ/vlapi/mqttp"
 	"github.com/VolantMQ/vlapi/plugin/persistence"
-	"github.com/VolantMQ/volantmq/configuration"
-	"github.com/VolantMQ/volantmq/systree"
-	"github.com/VolantMQ/volantmq/topics/types"
-	"github.com/VolantMQ/volantmq/types"
+	//"github.com/VolantMQ/volantmq/configuration"
+	//"github.com/VolantMQ/volantmq/systree"
+	//"github.com/VolantMQ/volantmq/topics/types"
+	//"github.com/VolantMQ/volantmq/types"
 	"go.uber.org/zap"
 )
 
@@ -256,6 +260,7 @@ func (mT *provider) subscriber() {
 
 func (mT *provider) unSubscriber() {
 	defer mT.wgPublisher.Done()
+
 	mT.wgPublisherStarted.Done()
 
 	for req := range mT.unSubIn {

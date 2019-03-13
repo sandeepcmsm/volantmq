@@ -5,12 +5,13 @@ import (
 	"net"
 	"net/http"
 	"time"
+	"volantmq/configuration"
+	"volantmq/systree"
 
 	"github.com/gobwas/ws/wsutil"
 	"github.com/gorilla/websocket"
-
-	"github.com/VolantMQ/volantmq/configuration"
-	"github.com/VolantMQ/volantmq/systree"
+	//"github.com/VolantMQ/volantmq/configuration"
+	//"github.com/VolantMQ/volantmq/systree"
 )
 
 type httpServer struct {

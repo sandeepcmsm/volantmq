@@ -3,8 +3,8 @@ package clients
 import (
 	"sync"
 	"sync/atomic"
-
-	"github.com/VolantMQ/volantmq/subscriber"
+	"volantmq/subscriber"
+	//"github.com/VolantMQ/volantmq/subscriber"
 )
 
 var subCount int32 = 0
